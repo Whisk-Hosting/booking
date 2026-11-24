@@ -1,0 +1,42 @@
+whisk: 1
+name: booking
+
+routes:
+  # The booking pages, a customer's own booking link, calendar feeds and the API are open to
+  # anyone. The schedule, services, team and settings need a signed-in person from the business's
+  # team. /api/v1 checks its own keys, and each feed its own token.
+  public: ["/", "/health", "/book/**", "/b/**", "/feeds/**", "/assets/**", "/api/**"]
+  # Booking, moving and cancelling need the bot challenge solved first.
+  challenge: ["/book/**", "/b/**"]
+
+health:
+  path: /health
+  timeout: 60
+
+database: app
+migrate: "node dist/migrate.js"
+
+# Confirmations and reminders, from the business's own domain once it is verified in Whisk.
+email: true
+
+static:
+  - dir: public/fonts
+    path: /assets/fonts
+
+functions:
+  - name: send-email
+    event: email.send
+    graph: workflows/send-email.graph.yaml
+  # Emails each customer a reminder ahead of their booking, as long before as Settings says.
+  - name: reminders
+    cron: "0 * * * *"
+    tz: America/New_York
+    graph: workflows/reminders.graph.yaml
+
+env:
+  LOG_LEVEL: info
+  # "1" only on the live demo (demo/whisk.yaml): see src/demo.ts.
+  DEMO: "0"
+  # The address in emails and calendar links. Set it to the business's own domain once that
+  # points at this app (https://book.example.com); empty uses the whisk.page address.
+  PUBLIC_URL: ""

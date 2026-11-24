@@ -1,0 +1,44 @@
+# The live demo only (npm run deploy:demo). The same app as ../whisk.yaml with every page open,
+# every form challenged, DEMO=1 and a nightly reset. See src/demo.ts.
+whisk: 1
+name: booking
+
+routes:
+  # /api/** is open and not challenged, so scripts can call it; it still needs a key, which the
+  # guest can make in Settings.
+  public: ["/", "/health", "/book/**", "/b/**", "/feeds/**", "/assets/**", "/api/**", "/demo/**", "/schedule", "/schedule/**", "/services", "/services/**", "/team", "/team/**", "/settings", "/settings/**"]
+  challenge: ["/book/**", "/b/**", "/demo/**", "/schedule/**", "/services", "/services/**", "/team", "/team/**", "/settings", "/settings/**"]
+
+health:
+  path: /health
+  timeout: 60
+
+database: app
+migrate: "node dist/migrate.js"
+
+email: true
+
+static:
+  - dir: public/fonts
+    path: /assets/fonts
+
+functions:
+  - name: send-email
+    event: email.send
+    graph: workflows/send-email.graph.yaml
+  - name: reminders
+    cron: "0 * * * *"
+    tz: America/New_York
+    graph: workflows/reminders.graph.yaml
+  # Empties the tables and puts the sample business back at 3 am every night.
+  - name: demo-reset
+    cron: "0 3 * * *"
+    tz: America/New_York
+    graph: workflows/demo-reset.graph.yaml
+
+env:
+  LOG_LEVEL: info
+  # The address in emails and calendar links. Set it to the business's own domain once that
+  # points at this app (https://book.example.com); empty uses the whisk.page address.
+  PUBLIC_URL: ""
+  DEMO: "1"
